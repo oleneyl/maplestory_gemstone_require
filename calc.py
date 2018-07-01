@@ -7,34 +7,41 @@ import math
 with open("core_jemstone.json") as f:
     DATA = json.load(f)
 
+#Exp per core
 CORE_EXP = 50
 
+#Core type flags
 ENHANCE_FLAG = 0
 SKILL_FLAG = 1
 USELESS_FLAG = 2
 
+#Core probabilities
 ENHANCE_PROB = 0.8
-SKILL_PROB = 0.16
-USELESS_PROB = 0.04
+SKILL_PROB = 0.1
+USELESS_PROB = 0.1
 
+#Fragment gain from core
 ENHANCE_FRAG = 10
 SKILL_FRAG = 40
 USELESS_FRAG = 50
 
+#Fragment requirements to generate core
 ENHANCE_NEED_FRAG = 70
 SKILL_NEED_FRAG = 140
 
+#Lv - exp map
 ENHANCE_NEED = []
 [ENHANCE_NEED.append( (3 * n + 19) * n * 5 // 2 ) for n in range(25)]
 SKILL_NEED = []
 [SKILL_NEED.append( (n + 21) * n * 5 // 2 ) for n in range(25)]
 
+#Skill levels that aim to achieve
 AIM_MAIN = 50
 AIM_SUB = 25
-AIM_SKILL = 14
+AIM_SKILL = 20
 
 class User():
-    def __init__(self, jobname, slot = -1):
+    def __init__(self, jobname, level = 200):
         self.job = jobname
         self.frags = 0
         
@@ -55,13 +62,14 @@ class User():
         self.total = DATA[self.job]["core_total"]
         self.main = len(DATA[self.job]["main"])
         self.sub = len(DATA[self.job]["sub"])
+        self.skillneed = DATA[self.job]["vskill"]
         
-        self.skillneed = 0  #Modify if program applies skill usages
+        #self.skillneed = 0  #Modify if program applies skill usages
         
-        if slot == -1:
-            self.slot = self.total
-        else:
-            self.slot = slot
+        self.enhance_complete_flag = False
+        
+        self.slot = 4 + (level - 200) // 5  - self.skillneed    #Available slots, excepting <skillneed>.
+        self.mat_point = level - 200        #matrix point
         
         [self.core_list.append([]) for i in range(self.total)]
         [self.core_amount.append(0) for i in range(self.total)]
@@ -78,6 +86,7 @@ class User():
             while ENHANCE_NEED[i] < exp:
                 i += 1
         elif _type == SKILL_FLAG:
+            #print("Log at skill flaged exp calculation..EXp : " + str(exp))
             while SKILL_NEED[i] < exp:
                 i += 1
         return i
@@ -88,12 +97,15 @@ class User():
     def get_core(self):
         prob = random.random()
         if prob < ENHANCE_PROB:
-            core = random.sample(range(self.total),3)
-            self.core_list[core[0]].append(core)
-            self.core_amount[core[0]] += 1
+            if self.enhance_complete_flag:
+                self.frags += ENHANCE_FRAG    
+            else:
+                core = random.sample(range(self.total),3)
+                self.core_list[core[0]].append(core)
+                self.core_amount[core[0]] += 1
             
         elif prob < ENHANCE_PROB + SKILL_PROB:
-            core = random.randint(0, self.skillneed)
+            core = random.randint(0, self.skillneed - 1)
             if self.skillneed == 0:
                 self.frags += SKILL_FRAG
             else:
@@ -134,8 +146,8 @@ class User():
         retlist = []
         [retlist.append(i) for i in range(self.total)]
 
-        #Iterate 10 times : be cleverer! But it makes us stupid..
-        for repeat in range(10):
+        #Iterate 7 times : be cleverer! But it also can make us stupid..
+        for repeat in range(7):
             attrs = []
             #Initialize attraction point
             for i in range(self.main):
@@ -187,20 +199,27 @@ class User():
                 return (40 + 15 * _lv)
             elif _flag == SKILL_FLAG:
                 return (50 + 5 * _lv)
-                
-        lvlist = []        
-        for i in range(self.total):
-            if index in self.core_head[i]:
-                lvlist.append(self.get_level_at_core_list(i))
-                
-        count = lack
+
         retexp = 0
+        lvlist = []
+        if flag == ENHANCE_FLAG:
+            for i in range(self.total):
+                if index in self.core_head[i]:
+                    lvlist.append(self.get_level_at_core_list(i))
+            count = lack
+            
+            while count > 0:
+                lvlist.sort()
+                retexp += exp_from_lvup_at(lvlist[0], flag)
+                lvlist[0] += 1
+                count -= 1               
+                
+        elif flag == SKILL_FLAG:
+            for i in range(self.get_level(self.skill_list[index], flag), lack):
+                retexp += exp_from_lvup_at(i, flag)
         
-        while count > 0:
-            lvlist.sort()
-            retexp += exp_from_lvup_at(lvlist[0], flag)
-            lvlist[0] += 1
-            count -= 1
+        else:
+            raise TypeError
             
         return retexp
         
@@ -216,8 +235,29 @@ class User():
         while len(lv_list) != self.total:
             lv_list.append(0)
         
+        vskill_lv_list = []
+        vskill_lv_current = []
+        [vskill_lv_list.append(self.aim_skill) for i in range(self.skillneed)]
+        [vskill_lv_current.append(0) for i in range(self.skillneed)]
+            
+        #Preprocessing with matrix point..
+        #First invest every points into vskills
+        mat_point = self.mat_point
+        for i in range(self.skillneed * 5):
+            vskill_lv_list[i % self.skillneed] -= 1
+            mat_point -= 1
+            if mat_point <= 0:
+                break
+        #Use remain points for reducing levels in enhancing cores.
+        while mat_point > 0:
+            for i in range(3):      #Triple reducing for enhancement. <-- Some-how Underestimates low-needing jobs :: Need to fix better.
+                lv_list[lv_list.index(max(lv_list))] -= 1
+            mat_point -= 1
+        #Matrix point pre-processing END.
+        
         imp = self.get_important_indices()
         
+        #Calculate status of enhancement cores
         for i in imp:
             if self.core_head[i][1] != -1:
                 for k in range(3):
@@ -226,19 +266,30 @@ class User():
                     if lv_list[self.core_head[i][k]] < 0:
                         lv_list[self.core_head[i][k]] = 0
         
+        #Calculate lacks
         needs = 0
+        
+        #Enhance skill lack
         for i in range(self.total):
             need_i = 0
             if lv_list[i] != 0:
                 need_i += self.calculate_lack_exp(i, lv_list[i], flag = ENHANCE_FLAG)
-            needs += ((need_i - 1) // CORE_EXP + 1) * CORE_EXP
+            needs += ((need_i - 1) // CORE_EXP + 1) * ENHANCE_NEED_FRAG
         
-        frags_clever = self.frags
+        #Raise enhance completion flag if do not need enhancement any more
+        if needs == 0:
+            self.enhance_complete_flag = True
+        
+        #VSkill lack
+        for i in range(self.skillneed):
+            need_i = self.calculate_lack_exp(i, vskill_lv_list[i], flag = SKILL_FLAG)
+            needs += ((need_i - 1) // CORE_EXP + 1) * SKILL_NEED_FRAG
         
         #Generate fragments from none - using enhance cores
+        frags_clever = self.frags
         for i in range(self.total):
             if i not in imp:
-                frags_clever += len(self.core_list[i]) * ENHANCE_FRAG
+                frags_clever += self.core_amount[i] * ENHANCE_FRAG
             
         if _print:
             print("Judegement Status(lack)")
@@ -256,6 +307,7 @@ class User():
             
     def simulate(self, _print = False):
         self.frags = 0
+        self.enhance_complete_flag = False
         
         for i in range(self.total):
             self.core_amount[i] = 0
@@ -293,13 +345,17 @@ class User():
             if i in imp:
                 printstr += " <-- selected"
             print(printstr)
+        print("---- VSkill Cores ----")
+        for i in range(self.skillneed):
+            print("VSkill core #" + str(i) + " : Lv." + str(self.get_level(self.skill_list[i], SKILL_FLAG)))
+        print("----------------------\n")
         print("fragments:" + str(self.frags) + "\n")
 
 if __name__ == "__main__":
     #name = sys.stdin.readline()
     #user = User(name.split("\n")[0])
-    user = User("에반", slot = 8)
-    iter_num = 10
+    user = User("에반", level = 230)
+    iter_num = 20
     
     sum_ = 0
     sq_sum = 0
@@ -314,9 +370,3 @@ if __name__ == "__main__":
     print("Average requirement : " + str((sum_ / iter_num)))
     stdev = math.sqrt(sq_sum * iter_num - sum_ * sum_) / iter_num
     print("STDEV : " + str(stdev))
-    
-
-    
-
-
-

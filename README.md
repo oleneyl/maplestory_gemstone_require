@@ -20,6 +20,8 @@ Description
   - Total Enhancing core Types ( in "core_total")
   - main Enhance skill name ( in "main" list)
   - sub Enhance skill name (in "sub" list)
+  - skill requirement that need to upgrade(in "vskill")
+  - 1Lv cores that need to fresh game environment (Such as Spider in mirror, ...) (in useless_skill)
 
 
 - calc.py
@@ -28,13 +30,13 @@ Description
   
   - Important global variables
     
-    AIM_MAIN : main skill enhancement level goal.
-    AIM_SUB : sub skill enhancement level goal.
-    AIM_SKILL : V skill enhancement level goal.
+    - AIM_MAIN : main skill enhancement level goal.
+    - AIM_SUB : sub skill enhancement level goal.
+    - AIM_SKILL : V skill enhancement level goal.
 
   - Usage Tips
     
-    class <User> generate user with given jobname & available slots. You must generate User first, and then run User.simulate(). This function will return used jemstone for achieve goal use'd been setted in AIM_* global variable.
+    class <User> generate user with given jobname & character level. You must generate User first, and then run User.simulate(). This function will return used jemstone for achieve goal use'd been setted in AIM_* global variable.
     In calc.py's code, it iterates 10 time ( = iter_num) & calculate average & standard deviation, print in STDOUT.
     
 
@@ -61,18 +63,20 @@ Description
   - 총 강화 코어 개수 ("core_total"에 명시됨)
   - 주 강화 스킬명 ("main" 리스트 내부에 명시됨)
   - 부 강화 스킬명("sub" 리스트 내부에 명시됨)
+  - 강화가 필요한 스킬의 개수("vskill"에 명시됨)
+  - 원활한 플레이를 위해서 1Lv이지만 필요한 코어들(스파이더 인 미러와 같은) ("useless_skill" 에 명시됨)
 
 - calc.py
 
   이 Python3 파일은 당신이 특정 직업&SLOT을 가지고 있을 때 소모해야 하는 평균 젬스톤 수를 계산해 줍니다.
   
   - 주요 전역 변수
-    AIM_MAIN : 주 코어들을 강화할 목표 레벨입니다.
-    AIM_SUB : 부 코어들을 강화할 목표 레벨입니다.
-    AIM_SKILL : V 스킬을 강화할 목표 레벨입니다.
+    - AIM_MAIN : 주 코어들을 강화할 목표 레벨입니다.
+    - AIM_SUB : 부 코어들을 강화할 목표 레벨입니다.
+    - AIM_SKILL : V 스킬을 강화할 목표 레벨입니다.
 
   - 사용 팁
     
-    class <User> 는 시뮬레이션에 적합한 가상의 유저를 주어진 직업명과 slot 개수를 받아서 생성합니다. 해당 프로그램의 실행을 위해서는 먼저 User를 생성합니다. 그리고, User.simulate() 함수를 실행합니다. 해당 함수는 AIM_* 전역변수에 설정된
+    class <User> 는 시뮬레이션에 적합한 가상의 유저를 주어진 직업명과 level을 받아서 생성합니다. 해당 프로그램의 실행을 위해서는 먼저 User를 생성합니다. 그리고, User.simulate() 함수를 실행합니다. 해당 함수는 AIM_* 전역변수에 설정된
     목표치를 달성하기 위해 소모한 젬스톤의 개수를 출력할 것입니다.
-    calc.py 코드는 기본적으로 10회 ( = iter_num)의 시뮬레이션을 반복하고, 평균과 표준편차를 계산하여 당신의 STDOUT에 출력할 것입니다.
+    calc.py 코드는 기본적으로 20회 ( = iter_num)의 시뮬레이션을 반복하고, 평균과 표준편차를 계산하여 당신의 STDOUT에 출력할 것입니다.
